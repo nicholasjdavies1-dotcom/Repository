@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nokia Snake II</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a1a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+      user-select: none;
+    }
+
+    .phone {
+      background: #2a2a2a;
+      border-radius: 30px 30px 50px 50px;
+      padding: 20px 16px 30px;
+      box-shadow:
+        0 0 0 2px #444,
+        0 8px 40px rgba(0,0,0,0.8),
+        inset 0 1px 0 rgba(255,255,255,0.05);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      width: 280px;
+    }
+
+    .phone-brand {
+      color: #888;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .screen-bezel {
+      background: #111;
+      border-radius: 8px;
+      padding: 10px;
+      border: 2px solid #333;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
+    }
+
+    .screen {
+      background: #9db57b;
+      border-radius: 3px;
+      position: relative;
+      overflow: hidden;
+      image-rendering: pixelated;
+    }
+
+    /* LCD pixel overlay effect */
+    .screen::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 1px,
+        rgba(0,0,0,0.04) 1px,
+        rgba(0,0,0,0.04) 2px
+      );
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+    }
+
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: #3a5a2a;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      padding: 0 2px 4px;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* D-pad area */
+    .controls {
+      display: grid;
+      grid-template-columns: 40px 44px 40px;
+      grid-template-rows: 40px 44px 40px;
+      gap: 2px;
+      margin-top: 4px;
+    }
+
+    .btn {
+      background: #3a3a3a;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #aaa;
+      font-size: 14px;
+      font-weight: bold;
+      transition: background 0.1s, transform 0.05s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn:active, .btn.pressed {
+      background: #555;
+      transform: scale(0.95);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    .btn-up    { grid-column: 2; grid-row: 1; border-radius: 6px 6px 2px 2px; }
+    .btn-left  { grid-column: 1; grid-row: 2; border-radius: 6px 2px 2px 6px; }
+    .btn-center{ grid-column: 2; grid-row: 2; border-radius: 50%; background: #444; font-size: 9px; color: #ccc; }
+    .btn-right { grid-column: 3; grid-row: 2; border-radius: 2px 6px 6px 2px; }
+    .btn-down  { grid-column: 2; grid-row: 3; border-radius: 2px 2px 6px 6px; }
+
+    /* corner spacers */
+    .controls > .spacer { background: transparent; box-shadow: none; cursor: default; }
+    .spacer:active { transform: none; background: transparent; box-shadow: none; }
+
+    .action-btns {
+      display: flex;
+      gap: 30px;
+    }
+
+    .btn-action {
+      background: #3a3a3a;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      color: #aaa;
+      font-size: 9px;
+      font-weight: bold;
+      letter-spacing: 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+      transition: background 0.1s, transform 0.05s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-action:active {
+      background: #555;
+      transform: scale(0.95);
+    }
+
+    .phone-bottom {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      width: 180px;
+    }
+
+    .key {
+      background: #3a3a3a;
+      border: none;
+      border-radius: 4px;
+      height: 24px;
+      cursor: pointer;
+      color: #888;
+      font-size: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .key:active { background: #555; }
+
+    .nokia-label {
+      color: #555;
+      font-size: 16px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    }
+
+    /* Instructions overlay on page */
+    .keyboard-hint {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #555;
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="phone-brand">NOKIA</div>
+
+  <div class="screen-bezel">
+    <div class="screen">
+      <div class="hud">
+        <span id="score-display">00000</span>
+        <span id="level-display">LV1</span>
+        <span id="lives-display">❤❤❤</span>
+      </div>
+      <canvas id="gameCanvas" width="168" height="112"></canvas>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="btn spacer"></div>
+    <button class="btn btn-up" id="btn-up">▲</button>
+    <div class="btn spacer"></div>
+    <button class="btn btn-left" id="btn-left">◀</button>
+    <button class="btn btn-center" id="btn-center">OK</button>
+    <button class="btn btn-right" id="btn-right">▶</button>
+    <div class="btn spacer"></div>
+    <button class="btn btn-down" id="btn-down">▼</button>
+    <div class="btn spacer"></div>
+  </div>
+
+  <div class="action-btns">
+    <button class="btn-action" id="btn-soft1">MENU</button>
+    <button class="btn-action" id="btn-soft2">BACK</button>
+  </div>
+
+  <div class="phone-bottom">
+    <div class="keypad">
+      <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+      <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+      <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+      <button class="key">*</button><button class="key">0</button><button class="key">#</button>
+    </div>
+    <div class="nokia-label">3310</div>
+  </div>
+</div>
+
+<div class="keyboard-hint">Arrow keys / WASD to move &bull; Enter / Space to start/pause</div>
+
+<script>
+(function() {
+  const CELL = 8;          // pixels per cell
+  const COLS = 21;         // 168 / 8
+  const ROWS = 14;         // 112 / 8
+
+  // Nokia LCD colours
+  const LCD_BG    = '#9db57b';
+  const LCD_DARK  = '#3a5a2a';
+  const LCD_MED   = '#5a7a42';
+
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const scoreEl  = document.getElementById('score-display');
+  const levelEl  = document.getElementById('level-display');
+  const livesEl  = document.getElementById('lives-display');
+
+  // ── Game state ───────────────────────────────────────────────────────────
+  const STATE = { MENU: 0, PLAYING: 1, PAUSED: 2, DEAD: 3, GAMEOVER: 4, LEVELUP: 5 };
+
+  let state       = STATE.MENU;
+  let snake       = [];
+  let dir         = { x: 1, y: 0 };
+  let nextDir     = { x: 1, y: 0 };
+  let food        = [];           // array of food items
+  let bonusFood   = null;         // temporary bonus apple
+  let bonusTimer  = 0;
+  let walls       = [];
+  let score       = 0;
+  let hiScore     = parseInt(localStorage.getItem('snake2_hi') || '0');
+  let level       = 1;
+  let lives       = 3;
+  let tickMs      = 220;          // ms per tick (decreases with level)
+  let lastTick    = 0;
+  let frameId     = null;
+  let flashTimer  = 0;
+  let levelUpTimer= 0;
+  let deadTimer   = 0;
+  let menuAnim    = 0;
+
+  // Levels config: {speed (ms), wallCount, wrapEdges}
+  const LEVELS = [
+    { speed: 220, wallCount: 0,  wrap: true  },   // 1
+    { speed: 190, wallCount: 4,  wrap: true  },   // 2
+    { speed: 165, wallCount: 8,  wrap: true  },   // 3
+    { speed: 145, wallCount: 12, wrap: false },   // 4
+    { speed: 125, wallCount: 16, wrap: false },   // 5
+    { speed: 110, wallCount: 20, wrap: false },   // 6
+    { speed:  95, wallCount: 24, wrap: false },   // 7
+    { speed:  80, wallCount: 28, wrap: false },   // 8
+    { speed:  68, wallCount: 32, wrap: false },   // 9
+  ];
+
+  function getLevelCfg() { return LEVELS[Math.min(level - 1, LEVELS.length - 1)]; }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function rnd(n) { return Math.floor(Math.random() * n); }
+
+  function cellOccupied(x, y, excludeFood) {
+    if (snake.some(s => s.x === x && s.y === y)) return true;
+    if (walls.some(w => w.x === x && w.y === y)) return true;
+    if (!excludeFood) {
+      if (food.some(f => f.x === x && f.y === y)) return true;
+      if (bonusFood && bonusFood.x === x && bonusFood.y === y) return true;
+    }
+    return false;
+  }
+
+  function freeCell() {
+    let tries = 0, x, y;
+    do { x = rnd(COLS); y = rnd(ROWS); tries++; }
+    while (cellOccupied(x, y) && tries < 500);
+    return { x, y };
+  }
+
+  // ── Init / level setup ───────────────────────────────────────────────────
+  function startGame() {
+    score  = 0;
+    level  = 1;
+    lives  = 3;
+    initLevel();
+    state = STATE.PLAYING;
+  }
+
+  function initLevel() {
+    const cfg = getLevelCfg();
+    tickMs = cfg.speed;
+
+    // Build snake in centre heading right
+    const midX = Math.floor(COLS / 2);
+    const midY = Math.floor(ROWS / 2);
+    snake = [
+      { x: midX,     y: midY },
+      { x: midX - 1, y: midY },
+      { x: midX - 2, y: midY },
+    ];
+    dir     = { x: 1, y: 0 };
+    nextDir = { x: 1, y: 0 };
+    bonusFood  = null;
+    bonusTimer = 0;
+
+    // Build walls (pairs of cells)
+    walls = [];
+    for (let i = 0; i < cfg.wallCount; i++) {
+      let c = freeCell();
+      walls.push(c);
+      // wall segments come in short horizontal pairs
+      if (Math.random() > 0.5 && c.x + 1 < COLS && !cellOccupied(c.x + 1, c.y)) {
+        walls.push({ x: c.x + 1, y: c.y });
+      }
+    }
+
+    // Add edge walls when wrap is off
+    if (!cfg.wrap) {
+      for (let x = 0; x < COLS; x++) {
+        walls.push({ x, y: 0 });
+        walls.push({ x, y: ROWS - 1 });
+      }
+      for (let y = 1; y < ROWS - 1; y++) {
+        walls.push({ x: 0,        y });
+        walls.push({ x: COLS - 1, y });
+      }
+    }
+
+    // Place food
+    food = [];
+    spawnFood();
+    spawnFood();
+
+    updateHUD();
+  }
+
+  function spawnFood() {
+    if (food.length >= 3) return;
+    const c = freeCell();
+    // types: 'apple'(1pt), 'cherry'(3pt), 'strawberry'(5pt)
+    const types = ['apple','apple','apple','apple','cherry','cherry','strawberry'];
+    food.push({ ...c, type: types[rnd(types.length)] });
+  }
+
+  function spawnBonusFood() {
+    bonusFood  = { ...freeCell(), type: 'bonus' };
+    bonusTimer = 60; // ticks
+  }
+
+  // ── Update HUD ───────────────────────────────────────────────────────────
+  function updateHUD() {
+    scoreEl.textContent = String(score).padStart(5, '0');
+    levelEl.textContent = 'LV' + level;
+    livesEl.textContent = '❤'.repeat(Math.max(0, lives));
+  }
+
+  // ── Tick (game logic) ────────────────────────────────────────────────────
+  function tick() {
+    if (state !== STATE.PLAYING) return;
+
+    dir = { ...nextDir };
+    const cfg = getLevelCfg();
+    const head = snake[0];
+    let nx = head.x + dir.x;
+    let ny = head.y + dir.y;
+
+    if (cfg.wrap) {
+      nx = (nx + COLS) % COLS;
+      ny = (ny + ROWS) % ROWS;
+    }
+
+    // Wall or self collision
+    const hitWall = walls.some(w => w.x === nx && w.y === ny);
+    const hitSelf = snake.some(s => s.x === nx && s.y === ny);
+    const outOfBounds = nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS;
+
+    if (hitWall || hitSelf || outOfBounds) {
+      lives--;
+      updateHUD();
+      if (lives <= 0) {
+        if (score > hiScore) { hiScore = score; localStorage.setItem('snake2_hi', hiScore); }
+        state = STATE.GAMEOVER;
+        deadTimer = 90;
+      } else {
+        state = STATE.DEAD;
+        deadTimer = 60;
+      }
+      return;
+    }
+
+    // Move
+    snake.unshift({ x: nx, y: ny });
+
+    // Check food
+    let ate = false;
+    const foodPoints = { apple: 1, cherry: 3, strawberry: 5, bonus: 10 };
+
+    const foodIdx = food.findIndex(f => f.x === nx && f.y === ny);
+    if (foodIdx >= 0) {
+      const eaten = food.splice(foodIdx, 1)[0];
+      score += foodPoints[eaten.type] * level;
+      ate = true;
+      spawnFood();
+      if (Math.random() < 0.15 && !bonusFood) spawnBonusFood();
+      checkLevelUp();
+    }
+
+    if (bonusFood && bonusFood.x === nx && bonusFood.y === ny) {
+      score += foodPoints.bonus * level;
+      bonusFood = null;
+      ate = true;
+      checkLevelUp();
+    }
+
+    if (!ate) snake.pop();
+
+    // Bonus food timer
+    if (bonusFood) {
+      bonusTimer--;
+      if (bonusTimer <= 0) bonusFood = null;
+    }
+
+    updateHUD();
+  }
+
+  function checkLevelUp() {
+    const thresholds = [0, 10, 25, 45, 70, 100, 135, 175, 220, 270];
+    const nextLevel = thresholds.findIndex(t => score < t * level);
+    const newLevel  = nextLevel === -1 ? LEVELS.length + 1 : nextLevel;
+
+    if (newLevel > level) {
+      level = Math.min(newLevel, LEVELS.length + 1);
+      state = STATE.LEVELUP;
+      levelUpTimer = 80;
+    }
+  }
+
+  // ── Drawing ──────────────────────────────────────────────────────────────
+  function drawCell(x, y, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x * CELL + 1, y * CELL + 1, CELL - 1, CELL - 1);
+  }
+
+  function drawPixelText(text, cx, cy, color, large) {
+    // Use canvas text rendering in LCD style
+    ctx.fillStyle = color || LCD_DARK;
+    ctx.font = large ? 'bold 10px monospace' : '8px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, cx, cy);
+  }
+
+  function drawGrid() {
+    ctx.fillStyle = LCD_BG;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // subtle grid lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x <= COLS; x++) {
+      ctx.beginPath(); ctx.moveTo(x * CELL, 0); ctx.lineTo(x * CELL, canvas.height); ctx.stroke();
+    }
+    for (let y = 0; y <= ROWS; y++) {
+      ctx.beginPath(); ctx.moveTo(0, y * CELL); ctx.lineTo(canvas.width, y * CELL); ctx.stroke();
+    }
+  }
+
+  function drawWalls() {
+    walls.forEach(w => {
+      ctx.fillStyle = LCD_DARK;
+      ctx.fillRect(w.x * CELL, w.y * CELL, CELL, CELL);
+      // brick highlight
+      ctx.fillStyle = LCD_MED;
+      ctx.fillRect(w.x * CELL, w.y * CELL, CELL - 2, 1);
+      ctx.fillRect(w.x * CELL, w.y * CELL, 1, CELL - 2);
+    });
+  }
+
+  function drawSnake() {
+    snake.forEach((seg, i) => {
+      if (i === 0) {
+        // Head
+        ctx.fillStyle = LCD_DARK;
+        ctx.fillRect(seg.x * CELL, seg.y * CELL, CELL, CELL);
+        // Eyes
+        ctx.fillStyle = LCD_BG;
+        const ex = dir.x, ey = dir.y;
+        // position eyes based on direction
+        let e1x, e1y, e2x, e2y;
+        if (ex === 1)       { e1x=6; e1y=2; e2x=6; e2y=5; }
+        else if (ex === -1) { e1x=1; e1y=2; e2x=1; e2y=5; }
+        else if (ey === -1) { e1x=2; e1y=1; e2x=5; e2y=1; }
+        else                { e1x=2; e1y=6; e2x=5; e2y=6; }
+        ctx.fillRect(seg.x * CELL + e1x, seg.y * CELL + e1y, 1, 1);
+        ctx.fillRect(seg.x * CELL + e2x, seg.y * CELL + e2y, 1, 1);
+      } else {
+        // Body — alternating pattern for scale effect
+        ctx.fillStyle = i % 2 === 0 ? LCD_DARK : LCD_MED;
+        ctx.fillRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2);
+      }
+    });
+  }
+
+  const FOOD_ICONS = {
+    apple:       { color: LCD_DARK,  draw(x,y) {
+      ctx.fillStyle = this.color;
+      // small apple shape
+      ctx.fillRect(x*CELL+2, y*CELL+3, 4, 4);
+      ctx.fillRect(x*CELL+3, y*CELL+2, 2, 1);
+      ctx.fillRect(x*CELL+4, y*CELL+1, 1, 2);
+    }},
+    cherry:      { color: LCD_DARK,  draw(x,y) {
+      ctx.fillStyle = this.color;
+      ctx.fillRect(x*CELL+1, y*CELL+3, 2, 2);
+      ctx.fillRect(x*CELL+5, y*CELL+3, 2, 2);
+      ctx.fillRect(x*CELL+3, y*CELL+1, 1, 4);
+      ctx.fillRect(x*CELL+4, y*CELL+2, 2, 1);
+    }},
+    strawberry:  { color: LCD_DARK,  draw(x,y) {
+      ctx.fillStyle = this.color;
+      ctx.fillRect(x*CELL+2, y*CELL+2, 4, 4);
+      ctx.fillRect(x*CELL+3, y*CELL+1, 2, 2);
+      ctx.fillRect(x*CELL+1, y*CELL+3, 1, 2);
+      ctx.fillRect(x*CELL+6, y*CELL+3, 1, 2);
+      // seeds
+      ctx.fillStyle = LCD_BG;
+      ctx.fillRect(x*CELL+3, y*CELL+3, 1, 1);
+      ctx.fillRect(x*CELL+5, y*CELL+4, 1, 1);
+    }},
+    bonus:       { color: LCD_DARK,  draw(x,y) {
+      ctx.fillStyle = this.color;
+      ctx.fillRect(x*CELL+1, y*CELL+1, 6, 6);
+      ctx.fillStyle = LCD_BG;
+      ctx.fillRect(x*CELL+2, y*CELL+2, 4, 4);
+      ctx.fillStyle = this.color;
+      ctx.fillRect(x*CELL+3, y*CELL+3, 2, 2);
+    }},
+  };
+
+  function drawFood() {
+    food.forEach(f => {
+      if (FOOD_ICONS[f.type]) FOOD_ICONS[f.type].draw(f.x, f.y);
+    });
+    if (bonusFood) {
+      // Flash the bonus food
+      if (Math.floor(Date.now() / 200) % 2 === 0) {
+        FOOD_ICONS.bonus.draw(bonusFood.x, bonusFood.y);
+      }
+    }
+  }
+
+  // ── Screens ──────────────────────────────────────────────────────────────
+  function drawMenu() {
+    drawGrid();
+    menuAnim++;
+
+    // Animated snake demo
+    const t = menuAnim;
+    ctx.fillStyle = LCD_DARK;
+    for (let i = 0; i < 8; i++) {
+      const sx = Math.round(8 + Math.cos((t - i * 3) * 0.12) * 5);
+      const sy = Math.round(4 + Math.sin((t - i * 3) * 0.10) * 2);
+      ctx.fillRect(sx * CELL + 1, sy * CELL + 1, CELL - 2, CELL - 2);
+    }
+
+    ctx.fillStyle = LCD_DARK;
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SNAKE II', canvas.width / 2, 62);
+
+    ctx.font = '8px monospace';
+    ctx.fillText('HI: ' + String(hiScore).padStart(5,'0'), canvas.width / 2, 78);
+
+    if (Math.floor(Date.now() / 600) % 2 === 0) {
+      ctx.fillText('PRESS OK TO START', canvas.width / 2, 94);
+    }
+  }
+
+  function drawGame() {
+    drawGrid();
+    drawWalls();
+    drawFood();
+    drawSnake();
+  }
+
+  function drawPaused() {
+    drawGame();
+    // semi-overlay
+    ctx.fillStyle = 'rgba(157,181,123,0.7)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = LCD_DARK;
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2 - 8);
+    ctx.font = '8px monospace';
+    ctx.fillText('OK to resume', canvas.width / 2, canvas.height / 2 + 8);
+  }
+
+  function drawDead() {
+    drawGame();
+    if (Math.floor(deadTimer / 8) % 2 === 0) {
+      ctx.fillStyle = 'rgba(157,181,123,0.5)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.fillStyle = LCD_DARK;
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('OUCH!', canvas.width / 2, canvas.height / 2);
+    ctx.font = '8px monospace';
+    ctx.fillText('Lives: ' + '❤'.repeat(lives), canvas.width / 2, canvas.height / 2 + 14);
+  }
+
+  function drawGameOver() {
+    drawGrid();
+    ctx.fillStyle = LCD_DARK;
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('GAME OVER', canvas.width / 2, 36);
+
+    ctx.font = '8px monospace';
+    ctx.fillText('Score: ' + score, canvas.width / 2, 56);
+    ctx.fillText('Best:  ' + hiScore, canvas.width / 2, 68);
+
+    if (Math.floor(Date.now() / 600) % 2 === 0) {
+      ctx.fillText('OK to play again', canvas.width / 2, 90);
+    }
+  }
+
+  function drawLevelUp() {
+    drawGame();
+    ctx.fillStyle = 'rgba(157,181,123,0.6)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = LCD_DARK;
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('LEVEL ' + level, canvas.width / 2, canvas.height / 2 - 8);
+    ctx.font = '8px monospace';
+    ctx.fillText('Get ready!', canvas.width / 2, canvas.height / 2 + 8);
+  }
+
+  // ── Main loop ─────────────────────────────────────────────────────────────
+  function loop(ts) {
+    frameId = requestAnimationFrame(loop);
+
+    // Timed states
+    if (state === STATE.DEAD) {
+      deadTimer--;
+      if (deadTimer <= 0) { initLevel(); state = STATE.PLAYING; }
+    }
+    if (state === STATE.GAMEOVER) {
+      deadTimer--;
+      // just wait for input
+    }
+    if (state === STATE.LEVELUP) {
+      levelUpTimer--;
+      if (levelUpTimer <= 0) { initLevel(); state = STATE.PLAYING; }
+    }
+
+    // Game tick
+    if (state === STATE.PLAYING && ts - lastTick >= tickMs) {
+      tick();
+      lastTick = ts;
+    }
+
+    // Draw
+    switch (state) {
+      case STATE.MENU:     drawMenu();    break;
+      case STATE.PLAYING:  drawGame();    break;
+      case STATE.PAUSED:   drawPaused();  break;
+      case STATE.DEAD:     drawDead();    break;
+      case STATE.GAMEOVER: drawGameOver();break;
+      case STATE.LEVELUP:  drawLevelUp(); break;
+    }
+  }
+
+  // ── Input ─────────────────────────────────────────────────────────────────
+  function tryStart() {
+    if (state === STATE.MENU || state === STATE.GAMEOVER) startGame();
+    else if (state === STATE.PAUSED) state = STATE.PLAYING;
+    else if (state === STATE.PLAYING) state = STATE.PAUSED;
+  }
+
+  function setDir(dx, dy) {
+    // Prevent reversing
+    if (dx === -dir.x && dy === -dir.y) return;
+    nextDir = { x: dx, y: dy };
+  }
+
+  document.addEventListener('keydown', e => {
+    switch (e.key) {
+      case 'ArrowUp':    case 'w': case 'W': e.preventDefault(); setDir(0,-1); break;
+      case 'ArrowDown':  case 's': case 'S': e.preventDefault(); setDir(0, 1); break;
+      case 'ArrowLeft':  case 'a': case 'A': e.preventDefault(); setDir(-1,0); break;
+      case 'ArrowRight': case 'd': case 'D': e.preventDefault(); setDir( 1,0); break;
+      case 'Enter': case ' ':                e.preventDefault(); tryStart();   break;
+      case 'Escape':
+        if (state === STATE.PLAYING) state = STATE.PAUSED;
+        else if (state === STATE.PAUSED) state = STATE.PLAYING;
+        break;
+    }
+  });
+
+  // On-screen buttons
+  function wireBtn(id, action) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const doAction = e => { e.preventDefault(); action(); };
+    el.addEventListener('touchstart', doAction, { passive: false });
+    el.addEventListener('mousedown',  doAction);
+  }
+
+  wireBtn('btn-up',    () => setDir(0, -1));
+  wireBtn('btn-down',  () => setDir(0,  1));
+  wireBtn('btn-left',  () => setDir(-1, 0));
+  wireBtn('btn-right', () => setDir( 1, 0));
+  wireBtn('btn-center',() => tryStart());
+  wireBtn('btn-soft1', () => tryStart());
+  wireBtn('btn-soft2', () => {
+    if (state === STATE.PLAYING || state === STATE.PAUSED) {
+      state = STATE.MENU;
+    }
+  });
+
+  // ── Kick it off ───────────────────────────────────────────────────────────
+  frameId = requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
