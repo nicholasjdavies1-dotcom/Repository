@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Everton Transfer News — Sports News HQ</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sky-red:    #e4002b;
+    --sky-dark:   #0a1a2f;
+    --sky-navy:   #0e2545;
+    --sky-blue:   #003399;   /* Everton blue */
+    --panel:      #12294a;
+    --yellow:     #ffe600;
+    --text:       #ffffff;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    background: #06111f;
+    color: var(--text);
+    font-family: 'Arial', 'Helvetica Neue', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  /* TV frame */
+  .tv {
+    width: 100%;
+    max-width: 1100px;
+    aspect-ratio: 16 / 9;
+    max-height: 100vh;
+    background: var(--sky-dark);
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+    box-shadow: 0 0 60px rgba(0,0,0,0.8);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ─────────────────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: stretch;
+    background: var(--sky-red);
+    height: 8%;
+    min-height: 44px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    background: var(--sky-red);
+    font-weight: 900;
+    letter-spacing: 0.5px;
+  }
+  .logo .badge {
+    background: #fff;
+    color: var(--sky-blue);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: clamp(11px, 1.6vw, 18px);
+    font-weight: 900;
+  }
+  .logo .word {
+    font-size: clamp(11px, 1.6vw, 18px);
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .logo .word small {
+    display: block;
+    font-size: 0.6em;
+    font-weight: 700;
+    opacity: 0.9;
+  }
+  .topbar .section {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    margin-left: auto;
+    background: var(--sky-blue);
+    font-weight: 800;
+    font-size: clamp(10px, 1.5vw, 16px);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .clock {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    background: var(--sky-dark);
+    font-weight: 700;
+    font-size: clamp(10px, 1.4vw, 15px);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Main content ───────────────────────────────────── */
+  .main {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .feature {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgba(0,20,60,0.1), rgba(0,10,30,0.85)),
+      linear-gradient(135deg, var(--sky-blue), #001a4d);
+    padding: 4%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .feature .crest {
+    position: absolute;
+    top: 6%;
+    right: 6%;
+    width: clamp(60px, 12vw, 140px);
+    height: clamp(60px, 12vw, 140px);
+    opacity: 0.28;
+  }
+  .feature .kicker {
+    display: inline-block;
+    align-self: flex-start;
+    background: var(--sky-red);
+    color: #fff;
+    font-weight: 900;
+    font-size: clamp(10px, 1.5vw, 15px);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    margin-bottom: 10px;
+  }
+  .feature h1 {
+    font-size: clamp(16px, 3.2vw, 40px);
+    line-height: 1.08;
+    font-weight: 900;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+    margin-bottom: 8px;
+  }
+  .feature p {
+    font-size: clamp(10px, 1.5vw, 16px);
+    opacity: 0.9;
+    max-width: 90%;
+    line-height: 1.35;
+  }
+
+  /* Headlines list */
+  .headlines {
+    background: var(--panel);
+    padding: 2.5% 3%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .headlines h2 {
+    font-size: clamp(11px, 1.6vw, 18px);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--yellow);
+    border-bottom: 2px solid rgba(255,255,255,0.15);
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .live-dot {
+    width: 9px; height: 9px;
+    background: var(--sky-red);
+    border-radius: 50%;
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%     { opacity: 0.4; transform: scale(0.7); }
+  }
+  .headlines ul { list-style: none; overflow: hidden; flex: 1; }
+  .headlines li {
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: clamp(10px, 1.35vw, 15px);
+    line-height: 1.25;
+    animation: fadeIn 0.5s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity:1; transform:none;} }
+  .headlines li .num {
+    color: var(--yellow);
+    font-weight: 900;
+    min-width: 16px;
+  }
+  .headlines li a { color: #fff; text-decoration: none; }
+  .headlines li a:hover { text-decoration: underline; }
+
+  /* ── Stats / status strip ───────────────────────────── */
+  .strip {
+    background: var(--sky-navy);
+    display: flex;
+    align-items: center;
+    height: 6%;
+    min-height: 26px;
+    padding: 0 16px;
+    font-size: clamp(9px, 1.2vw, 13px);
+    letter-spacing: 0.5px;
+    gap: 14px;
+    border-top: 2px solid rgba(255,255,255,0.08);
+  }
+  .strip .status { color: #9fd0ff; }
+  .strip .status b { color: var(--yellow); }
+
+  /* ── Breaking news ticker ───────────────────────────── */
+  .ticker {
+    display: flex;
+    align-items: stretch;
+    background: var(--yellow);
+    color: #000;
+    height: 11%;
+    min-height: 46px;
+    overflow: hidden;
+    position: relative;
+  }
+  .ticker .label {
+    background: #000;
+    color: var(--yellow);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-weight: 900;
+    font-size: clamp(11px, 1.8vw, 20px);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    z-index: 2;
+    box-shadow: 6px 0 12px rgba(0,0,0,0.35);
+  }
+  .ticker .track-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .ticker .track {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    will-change: transform;
+    animation: scroll var(--dur, 40s) linear infinite;
+    font-weight: 800;
+    font-size: clamp(12px, 1.9vw, 21px);
+  }
+  .ticker .track span.item {
+    padding: 0 28px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .ticker .track span.item::before {
+    content: '';
+    display: inline-block;
+    width: 9px; height: 9px;
+    background: var(--sky-red);
+    border-radius: 50%;
+    margin-right: 12px;
+  }
+  @keyframes scroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .ticker:hover .track { animation-play-state: paused; }
+</style>
+</head>
+<body>
+
+<div class="tv">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="logo">
+      <span class="badge">SNHQ</span>
+      <span class="word">Sports News HQ<small>Transfer Centre</small></span>
+    </div>
+    <div class="section">Everton FC</div>
+    <div class="clock" id="clock">--:--:--</div>
+  </header>
+
+  <!-- Main -->
+  <section class="main">
+    <div class="feature">
+      <!-- Everton crest (simple SVG) -->
+      <svg class="crest" viewBox="0 0 100 100" aria-hidden="true">
+        <rect x="18" y="10" width="64" height="78" rx="6" fill="#fff" opacity="0.15"/>
+        <rect x="22" y="14" width="56" height="70" rx="5" fill="#003399"/>
+        <path d="M50 26 l6 8 h10 l-8 6 3 10 -11 -6 -11 6 3 -10 -8 -6 h10 z" fill="#fff"/>
+        <text x="50" y="70" font-size="9" fill="#fff" text-anchor="middle" font-weight="900">EFC</text>
+      </svg>
+      <span class="kicker" id="feature-kicker">Breaking · Transfers</span>
+      <h1 id="feature-title">Loading the latest Everton transfer news…</h1>
+      <p id="feature-desc">Pulling in live updates from the wires. If the feed is unavailable, the latest cached Everton transfer lines will be shown.</p>
+    </div>
+
+    <aside class="headlines">
+      <h2><span class="live-dot"></span> Everton Transfers · Live</h2>
+      <ul id="headline-list">
+        <li><span class="num">1</span><span>Fetching headlines…</span></li>
+      </ul>
+    </aside>
+  </section>
+
+  <!-- Status strip -->
+  <div class="strip">
+    <span class="status">FEED: <b id="feed-status">connecting…</b></span>
+    <span class="status">UPDATED: <b id="updated-at">—</b></span>
+    <span class="status">STORIES: <b id="story-count">0</b></span>
+  </div>
+
+  <!-- Ticker -->
+  <div class="ticker">
+    <div class="label">Breaking</div>
+    <div class="track-wrap">
+      <div class="track" id="ticker-track">
+        <span class="item">Loading breaking Everton transfer news…</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  // ── Config ────────────────────────────────────────────────────────────────
+  // Real Everton news feeds. We hit them through a public CORS proxy so the
+  // browser can read them client-side.
+  const FEEDS = [
+    'https://www.skysports.com/rss/12040',                         // Sky Sports football
+    'https://feeds.bbci.co.uk/sport/football/teams/everton/rss.xml' // BBC Everton
+  ];
+  // Public CORS/RSS proxies (tried in order until one works).
+  const PROXIES = [
+    url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+    url => 'https://corsproxy.io/?url=' + encodeURIComponent(url),
+  ];
+
+  const TRANSFER_WORDS = /transfer|sign|signing|signs|deal|bid|move|loan|fee|target|linked|contract|agree|agreed|swoop|talks|medical|window|£|\$|€|wages|release clause|joins|joined|snap up|chase/i;
+  const EVERTON_WORDS  = /everton|toffees|goodison|hill dickinson|the blues|moyes|dyche/i;
+
+  const REFRESH_MS = 60000; // re-fetch every 60s for "live" updates
+
+  // ── Fallback lines (used only if every feed/proxy fails) ──────────────────
+  const FALLBACK = [
+    { title: 'Everton monitoring striker options as summer window heats up', desc: 'The Toffees are exploring additions up front amid ongoing squad planning.' },
+    { title: 'Blues open talks over defensive reinforcement', desc: 'Everton have opened discussions as they look to strengthen at the back.' },
+    { title: 'Contract situation: Everton move to tie down key man', desc: 'Club officials are keen to resolve a contract before the window closes.' },
+    { title: 'Loan deal on the table for young Everton prospect', desc: 'A temporary move is being lined up to aid the player’s development.' },
+    { title: 'Everton weigh up move for midfield target', desc: 'Recruitment staff have identified a midfielder as a potential summer addition.' },
+  ];
+
+  // ── DOM refs ──────────────────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const clockEl   = $('clock');
+  const listEl    = $('headline-list');
+  const trackEl   = $('ticker-track');
+  const titleEl   = $('feature-title');
+  const descEl    = $('feature-desc');
+  const kickerEl  = $('feature-kicker');
+  const statusEl  = $('feed-status');
+  const updatedEl = $('updated-at');
+  const countEl   = $('story-count');
+
+  // ── Clock ─────────────────────────────────────────────────────────────────
+  function tickClock() {
+    const d = new Date();
+    clockEl.textContent = d.toLocaleTimeString('en-GB', { hour12: false });
+  }
+  setInterval(tickClock, 1000); tickClock();
+
+  // ── Fetch helpers ─────────────────────────────────────────────────────────
+  async function fetchThroughProxy(feedUrl) {
+    for (const proxy of PROXIES) {
+      try {
+        const res = await fetch(proxy(feedUrl), { cache: 'no-store' });
+        if (!res.ok) continue;
+        const text = await res.text();
+        if (text && text.indexOf('<') !== -1) return text;
+      } catch (e) { /* try next proxy */ }
+    }
+    return null;
+  }
+
+  function parseRSS(xmlText) {
+    const items = [];
+    try {
+      const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+      doc.querySelectorAll('item, entry').forEach(node => {
+        const get = tag => {
+          const el = node.querySelector(tag);
+          return el ? el.textContent.trim() : '';
+        };
+        const title = get('title');
+        let desc = get('description') || get('summary') || '';
+        // strip HTML from description
+        desc = desc.replace(/<[^>]*>/g, '').trim();
+        const link = (node.querySelector('link') && (node.querySelector('link').textContent.trim() || node.querySelector('link').getAttribute('href'))) || '#';
+        const pub  = get('pubDate') || get('published') || get('updated') || '';
+        if (title) items.push({ title, desc, link, pub });
+      });
+    } catch (e) { /* ignore parse errors */ }
+    return items;
+  }
+
+  function isEvertonTransfer(item) {
+    const hay = (item.title + ' ' + item.desc);
+    return EVERTON_WORDS.test(hay) && TRANSFER_WORDS.test(hay);
+  }
+  function isEverton(item) {
+    return EVERTON_WORDS.test(item.title + ' ' + item.desc);
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  function render(stories, live) {
+    if (!stories.length) return;
+
+    // Feature = newest story
+    const top = stories[0];
+    titleEl.textContent  = top.title;
+    descEl.textContent   = top.desc || 'Tap through for the full story on the latest Everton transfer developments.';
+    kickerEl.textContent = live ? 'Breaking · Everton Transfers' : 'Latest · Everton Transfers';
+
+    // Headline list (up to 6)
+    listEl.innerHTML = '';
+    stories.slice(0, 6).forEach((s, i) => {
+      const li = document.createElement('li');
+      const link = (s.link && s.link !== '#')
+        ? `<a href="${s.link}" target="_blank" rel="noopener">${escapeHtml(s.title)}</a>`
+        : escapeHtml(s.title);
+      li.innerHTML = `<span class="num">${i + 1}</span><span>${link}</span>`;
+      listEl.appendChild(li);
+    });
+
+    // Ticker — duplicate the content so the -50% scroll loops seamlessly
+    const items = stories.slice(0, 12).map(s => `<span class="item">${escapeHtml(s.title)}</span>`).join('');
+    trackEl.innerHTML = items + items;
+    // Scale duration to content length so speed stays readable
+    const dur = Math.max(30, Math.min(120, stories.length * 8));
+    trackEl.style.setProperty('--dur', dur + 's');
+
+    countEl.textContent   = stories.length;
+    updatedEl.textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    statusEl.textContent  = live ? 'LIVE' : 'CACHED';
+    statusEl.style.color  = live ? '#7CFC00' : '#ffb347';
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+
+  // ── Main load cycle ───────────────────────────────────────────────────────
+  async function load() {
+    statusEl.textContent = 'updating…';
+    let all = [];
+    for (const feed of FEEDS) {
+      const xml = await fetchThroughProxy(feed);
+      if (xml) all = all.concat(parseRSS(xml));
+    }
+
+    // De-dupe by title
+    const seen = new Set();
+    all = all.filter(it => {
+      const k = it.title.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k); return true;
+    });
+
+    // Prefer Everton + transfer stories; fall back to any Everton stories.
+    let stories = all.filter(isEvertonTransfer);
+    if (stories.length < 3) {
+      const evertonAny = all.filter(isEverton);
+      // merge, keeping transfer stories first
+      const extra = evertonAny.filter(s => !stories.includes(s));
+      stories = stories.concat(extra);
+    }
+
+    if (stories.length) {
+      render(stories, true);
+    } else {
+      // Total failure (CORS blocked / offline) — show fallback lines.
+      render(FALLBACK, false);
+    }
+  }
+
+  load();
+  setInterval(load, REFRESH_MS);
+})();
+</script>
+</body>
+</html>
