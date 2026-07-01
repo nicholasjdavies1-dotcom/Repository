@@ -338,16 +338,22 @@
 <script>
 (function () {
   // ── Config ────────────────────────────────────────────────────────────────
-  // Real Everton news feeds. We hit them through a public CORS proxy so the
-  // browser can read them client-side.
+  // A Google News *search* feed for "Everton transfer" always returns fresh,
+  // on-topic stories from across the web — far better than a generic club feed
+  // that only occasionally mentions transfers. We also keep a couple of club
+  // feeds as extra sources.
   const FEEDS = [
-    'https://www.skysports.com/rss/12040',                         // Sky Sports football
-    'https://feeds.bbci.co.uk/sport/football/teams/everton/rss.xml' // BBC Everton
+    'https://news.google.com/rss/search?q=Everton%20transfer%20when%3A14d&hl=en-GB&gl=GB&ceid=GB:en',
+    'https://news.google.com/rss/search?q=Everton%20FC%20sign%20OR%20bid%20OR%20deal&hl=en-GB&gl=GB&ceid=GB:en',
+    'https://feeds.bbci.co.uk/sport/football/teams/everton/rss.xml'
   ];
-  // Public CORS/RSS proxies (tried in order until one works).
+  // Proxies that fetch a feed and hand back usable data cross-origin.
+  // rss2json returns parsed JSON (most reliable); the others return raw XML.
   const PROXIES = [
-    url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
-    url => 'https://corsproxy.io/?url=' + encodeURIComponent(url),
+    { kind: 'json', url: u => 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u) },
+    { kind: 'xml',  url: u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) },
+    { kind: 'json', url: u => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u), wrapped: true },
+    { kind: 'xml',  url: u => 'https://corsproxy.io/?url=' + encodeURIComponent(u) },
   ];
 
   const TRANSFER_WORDS = /transfer|sign|signing|signs|deal|bid|move|loan|fee|target|linked|contract|agree|agreed|swoop|talks|medical|window|£|\$|€|wages|release clause|joins|joined|snap up|chase/i;
@@ -384,19 +390,45 @@
   setInterval(tickClock, 1000); tickClock();
 
   // ── Fetch helpers ─────────────────────────────────────────────────────────
-  async function fetchThroughProxy(feedUrl) {
+  // Try each proxy for a feed until one returns usable items.
+  async function fetchFeed(feedUrl) {
     for (const proxy of PROXIES) {
       try {
-        const res = await fetch(proxy(feedUrl), { cache: 'no-store' });
+        const res = await fetch(proxy.url(feedUrl), { cache: 'no-store' });
         if (!res.ok) continue;
+
+        if (proxy.kind === 'json') {
+          const data = await res.json();
+          // allorigins /get wraps the payload in { contents: "<xml>" }
+          if (proxy.wrapped) {
+            if (data && data.contents) {
+              const items = parseXML(data.contents);
+              if (items.length) return items;
+            }
+            continue;
+          }
+          // rss2json format: { status, items: [{title, description, link, pubDate}] }
+          if (data && Array.isArray(data.items) && data.items.length) {
+            return data.items.map(it => ({
+              title: cleanText(it.title || ''),
+              desc:  cleanText(it.description || it.content || ''),
+              link:  it.link || '#',
+              pub:   it.pubDate || ''
+            }));
+          }
+          continue;
+        }
+
+        // Raw XML proxy
         const text = await res.text();
-        if (text && text.indexOf('<') !== -1) return text;
+        const items = parseXML(text);
+        if (items.length) return items;
       } catch (e) { /* try next proxy */ }
     }
-    return null;
+    return [];
   }
 
-  function parseRSS(xmlText) {
+  function parseXML(xmlText) {
     const items = [];
     try {
       const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
@@ -405,16 +437,20 @@
           const el = node.querySelector(tag);
           return el ? el.textContent.trim() : '';
         };
-        const title = get('title');
-        let desc = get('description') || get('summary') || '';
-        // strip HTML from description
-        desc = desc.replace(/<[^>]*>/g, '').trim();
-        const link = (node.querySelector('link') && (node.querySelector('link').textContent.trim() || node.querySelector('link').getAttribute('href'))) || '#';
+        const title = cleanText(get('title'));
+        const desc  = cleanText(get('description') || get('summary') || '');
+        const linkEl = node.querySelector('link');
+        const link = (linkEl && (linkEl.textContent.trim() || linkEl.getAttribute('href'))) || '#';
         const pub  = get('pubDate') || get('published') || get('updated') || '';
         if (title) items.push({ title, desc, link, pub });
       });
     } catch (e) { /* ignore parse errors */ }
     return items;
+  }
+
+  // Strip HTML tags and the trailing " - Publisher" that Google News appends.
+  function cleanText(s) {
+    return s.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
   }
 
   function isEvertonTransfer(item) {
@@ -466,11 +502,10 @@
   // ── Main load cycle ───────────────────────────────────────────────────────
   async function load() {
     statusEl.textContent = 'updating…';
-    let all = [];
-    for (const feed of FEEDS) {
-      const xml = await fetchThroughProxy(feed);
-      if (xml) all = all.concat(parseRSS(xml));
-    }
+
+    // Fetch all feeds in parallel; each resolves to [] on failure.
+    const results = await Promise.all(FEEDS.map(fetchFeed));
+    let all = results.flat();
 
     // De-dupe by title
     const seen = new Set();
@@ -480,19 +515,22 @@
       seen.add(k); return true;
     });
 
-    // Prefer Everton + transfer stories; fall back to any Everton stories.
-    let stories = all.filter(isEvertonTransfer);
-    if (stories.length < 3) {
-      const evertonAny = all.filter(isEverton);
-      // merge, keeping transfer stories first
-      const extra = evertonAny.filter(s => !stories.includes(s));
-      stories = stories.concat(extra);
-    }
+    // Keep anything Everton-related. The Google News search feeds are already
+    // scoped to Everton transfers, so filter to Everton mentions and push the
+    // clear transfer stories to the top.
+    let stories = all.filter(isEverton);
+    stories.sort((a, b) => {
+      const at = isEvertonTransfer(a) ? 0 : 1;
+      const bt = isEvertonTransfer(b) ? 0 : 1;
+      if (at !== bt) return at - bt;
+      return (Date.parse(b.pub) || 0) - (Date.parse(a.pub) || 0);
+    });
 
     if (stories.length) {
       render(stories, true);
     } else {
-      // Total failure (CORS blocked / offline) — show fallback lines.
+      // Every feed/proxy was blocked or offline — show fallback lines so the
+      // screen still looks alive.
       render(FALLBACK, false);
     }
   }
